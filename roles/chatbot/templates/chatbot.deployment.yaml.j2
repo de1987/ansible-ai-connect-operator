@@ -104,11 +104,25 @@ spec:
             value: /.llama/data
           - name: EMBEDDING_MODEL
             value: ./embeddings_model
+{% if chatbot_default_provider == "openai" %}
+          - name: OPENAI_API_KEY
+            value: {{ chatbot_token }}
+          - name: OPENAI_BASE_URL
+            value: {{ chatbot_url }}
+{% elif chatbot_default_provider == "azure" %}
+          - name: AZURE_API_KEY
+            value: {{ chatbot_token }}
+          - name: AZURE_API_BASE
+            value: {{ chatbot_url }}
+{% elif chatbot_default_provider == "rhoai" %}
           - name: VLLM_URL
             value: {{ chatbot_url }}
           - name: VLLM_API_TOKEN
             value: {{ chatbot_token }}
+{% endif %}
           - name: INFERENCE_MODEL
+            value: {{ chatbot_model }}
+          - name: INFERENCE_MODEL_FILTER
             value: {{ chatbot_model }}
         ports:
           - containerPort: 8443

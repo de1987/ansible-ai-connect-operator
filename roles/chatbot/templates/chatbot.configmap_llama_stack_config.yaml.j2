@@ -19,8 +19,23 @@ data:
       - datasetio
       - telemetry
       - tool_runtime
+      - files
     providers:
       inference:
+{% if chatbot_default_provider == "openai" %}
+        - provider_id: openai
+          provider_type: remote::openai
+          config:
+            api_key: ${env.OPENAI_API_KEY}
+            base_url: ${env.OPENAI_BASE_URL:=https://api.openai.com/v1}
+{% elif chatbot_default_provider == "azure" %}
+        - provider_id: azure
+          provider_type: remote::azure
+          config:
+            api_key: ${env.AZURE_API_KEY}
+            api_base: ${env.AZURE_API_BASE}
+            api_type: null
+{% elif chatbot_default_provider == "rhoai" %}
         - provider_id: rhoai
           provider_type: remote::vllm
           config:
@@ -28,6 +43,10 @@ data:
             max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
             api_token: ${env.VLLM_API_TOKEN:=fake}
             tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+{% endif %}
+{% for key, value in chatbot_model_config_extras.items() %}
+            {{ key }}: {{ value }}
+{% endfor %}
         - provider_id: inline_sentence-transformer
           provider_type: inline::sentence-transformers
           config: {}
@@ -69,6 +88,15 @@ data:
               type: sqlite
               namespace: null
               db_path: ${env.PROVIDERS_DB_DIR:=/.llama/data/distributions/ansible-chatbot}/localfs_datasetio.db
+      files:
+        - provider_id: localfs
+          provider_type: inline::localfs
+          config:
+            storage_dir: ${env.PROVIDERS_DB_DIR:=/.llama/data/distributions/ansible-chatbot}/files
+            metadata_store:
+              type: sqlite
+              namespace: null
+              db_path: ${env.PROVIDERS_DB_DIR:=/.llama/data/distributions/ansible-chatbot}/files_store.db
       telemetry:
         - provider_id: meta-reference
           provider_type: inline::meta-reference
@@ -88,10 +116,18 @@ data:
       type: sqlite
       db_path: ${env.PROVIDERS_DB_DIR:=/.llama/data/distributions/ansible-chatbot}/registry.db
     models:
+{% if chatbot_default_provider == "azure" %}
       - metadata: {}
         model_id: ${env.INFERENCE_MODEL}
-        provider_id: rhoai
+        provider_id: azure
+        provider_model_id: ${env.INFERENCE_MODEL}
+        model_type: llm
+{% else %}
+      - metadata: {}
+        model_id: ${env.INFERENCE_MODEL}
+        provider_id: {{ chatbot_default_provider }}
         provider_model_id: null
+{% endif %}
       - metadata:
           embedding_dimension: 768
         model_id: ${env.EMBEDDINGS_MODEL:=/.llama/data/distributions/ansible-chatbot/embeddings_model}
